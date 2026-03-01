@@ -18,18 +18,25 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow: hidden;
-            text-align: center;
+            overflow: hidden; /* Evita barra de rolagem geral */
         }
 
         .container {
-            width: 90%;
-            max-width: 750px;
+            width: 85%;
+            max-width: 700px;
             position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
+            text-align: center;
+            max-height: 100vh; /* Mantém dentro da tela */
+            overflow-y: auto; /* Permite rolar apenas dentro do container se a tela for minúscula */
+            padding: 20px 0;
         }
+
+        /* Oculta barra de rolagem do container para manter estética limpa */
+        .container::-webkit-scrollbar { display: none; }
+        .container { -ms-overflow-style: none; scrollbar-width: none; }
 
         .hidden {
             display: none !important;
@@ -37,8 +44,8 @@
         }
 
         .symbol {
-            font-size: 4rem;
-            margin-bottom: 30px;
+            font-size: clamp(3rem, 15vw, 4rem); /* Responsivo */
+            margin-bottom: 20px;
             opacity: 0;
             transform: translateY(-20px);
             transition: all 1.5s ease;
@@ -51,37 +58,39 @@
         }
 
         .typewriter {
-            font-size: 1.3rem;
+            font-size: clamp(0.9rem, 4vw, 1.3rem); /* Ajusta a fonte pro celular */
             letter-spacing: 1px;
-            line-height: 2;
+            line-height: 1.6;
             text-align: left;
-            margin-bottom: 40px;
-            min-height: 200px;
+            margin-bottom: 30px;
+            width: 100%;
+            min-height: 180px; /* Evita que o campo de input pule muito de uma vez */
         }
 
-        .line {
-            display: block;
+        .line-container {
             margin-bottom: 15px;
-            overflow: hidden;
-            white-space: nowrap;
-            border-right: 2px solid transparent;
-            width: 0;
+            display: block;
         }
 
-        @keyframes typing {
-            from { width: 0; }
-            to { width: 100%; }
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 1.2em;
+            background-color: #fff;
+            animation: blink 0.75s step-end infinite;
+            vertical-align: bottom;
+            margin-left: 2px;
         }
 
-        @keyframes blink-caret {
-            from, to { border-color: transparent; }
-            50% { border-color: #fff; }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
         }
 
         .input-section {
             opacity: 0;
             transition: opacity 1s ease;
-            margin-top: 20px;
+            width: 100%;
         }
 
         .input-section.visible {
@@ -94,14 +103,16 @@
             border-bottom: 2px solid #555;
             color: #fff;
             font-family: 'Space Mono', monospace;
-            font-size: 1.5rem;
+            font-size: clamp(1rem, 5vw, 1.5rem); /* Ajusta tamanho do input */
             text-align: center;
             padding: 10px;
-            width: 80%;
-            letter-spacing: 3px;
+            width: 100%;
+            max-width: 350px;
+            letter-spacing: 2px;
             text-transform: uppercase;
             outline: none;
             transition: border-color 0.3s ease;
+            box-sizing: border-box;
         }
 
         input[type="text"]:focus {
@@ -114,7 +125,7 @@
             border: 1px solid #fff;
             padding: 10px 20px;
             font-family: 'Space Mono', monospace;
-            font-size: 1rem;
+            font-size: clamp(0.8rem, 3vw, 1rem);
             cursor: pointer;
             letter-spacing: 2px;
             text-transform: uppercase;
@@ -129,7 +140,7 @@
 
         .error-msg {
             color: #ff3333;
-            font-size: 0.9rem;
+            font-size: clamp(0.7rem, 3vw, 0.9rem);
             margin-top: 15px;
             opacity: 0;
             transition: opacity 0.3s ease;
@@ -142,6 +153,7 @@
             align-items: center;
             opacity: 0;
             transition: opacity 2s ease-in-out;
+            height: 100vh;
         }
 
         #success-screen.visible {
@@ -151,19 +163,21 @@
         .glitch-text {
             color: #00ffcc;
             font-weight: bold;
-            font-size: 2rem;
+            font-size: clamp(1.5rem, 6vw, 2.5rem);
             text-shadow: 2px 0 #fff, -2px 0 #000;
             animation: glitch 1s infinite;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+            text-align: center;
         }
 
         .final-message {
-            font-size: 1.2rem;
-            line-height: 2;
+            font-size: clamp(0.9rem, 4vw, 1.2rem);
+            line-height: 1.8;
             letter-spacing: 1.5px;
             opacity: 0;
             transform: translateY(20px);
             transition: all 2s ease 1s;
+            text-align: center;
         }
 
         .final-message.visible {
@@ -210,7 +224,6 @@
     </div>
 
     <script>
-        // O ENIGMA
         const lines = [
             "Sua voz viajou por muitos nomes e séculos.",
             "Seu mapa é exclusivo para o mundo de dentro.",
@@ -226,41 +239,54 @@
         window.onload = () => {
             setTimeout(() => {
                 symbol.classList.add('visible');
-                startTyping();
+                startTypingSequence();
             }, 1000);
         };
 
-        function startTyping() {
-            let delay = 0;
-            
-            lines.forEach((lineText, index) => {
-                const lineElement = document.createElement('span');
-                lineElement.classList.add('line');
-                lineElement.innerText = lineText;
+        // Nova lógica de digitação baseada em JS (perfeita para mobile)
+        async function startTypingSequence() {
+            for (let i = 0; i < lines.length; i++) {
+                const lineContainer = document.createElement('div');
+                lineContainer.classList.add('line-container');
                 
-                const typingDuration = lineText.length * 0.1;
-                lineElement.style.animation = `typing ${typingDuration}s steps(${lineText.length}, end) forwards, blink-caret .75s step-end infinite`;
-                lineElement.style.animationDelay = `${delay}s`;
+                const textSpan = document.createElement('span');
+                const cursorSpan = document.createElement('span');
+                cursorSpan.classList.add('cursor');
                 
-                textContainer.appendChild(lineElement);
+                lineContainer.appendChild(textSpan);
+                lineContainer.appendChild(cursorSpan);
+                textContainer.appendChild(lineContainer);
+
+                await typeLine(lines[i], textSpan);
                 
-                setTimeout(() => {
-                    typingAudio.currentTime = 0;
-                    typingAudio.play();
-                }, delay * 1000);
+                // Remove o cursor da linha atual antes de ir para a próxima
+                if (i < lines.length - 1) {
+                    cursorSpan.style.display = 'none';
+                }
+            }
 
-                setTimeout(() => {
-                    lineElement.style.borderRightColor = 'transparent';
-                    lineElement.style.animation = `typing ${typingDuration}s steps(${lineText.length}, end) forwards`;
-                }, (delay + typingDuration) * 1000);
-
-                delay += typingDuration + 0.5;
-            });
-
+            // Exibe o input após terminar a digitação
             setTimeout(() => {
                 inputSection.classList.remove('hidden');
                 setTimeout(() => inputSection.classList.add('visible'), 50);
-            }, delay * 1000 + 500);
+            }, 500);
+        }
+
+        function typeLine(sentence, element) {
+            return new Promise(resolve => {
+                let i = 0;
+                typingAudio.currentTime = 0;
+                typingAudio.play();
+                
+                const interval = setInterval(() => {
+                    element.innerHTML += sentence.charAt(i);
+                    i++;
+                    if (i >= sentence.length) {
+                        clearInterval(interval);
+                        setTimeout(resolve, 600); // Pausa entre as frases
+                    }
+                }, 40); // Velocidade da digitação
+            });
         }
 
         function checkAnswer() {
@@ -269,16 +295,15 @@
             const successAudio = document.getElementById('success-audio');
 
             const validAnswers = ['joanna de angelis', 'joana de angelis', 'joanna', 'joana'];
+            // Remove os acentos para facilitar a verificação
             const normalizedInput = input.normalize('NFD').replace(/[\u0300-\u036f]/g, "");
 
             if (validAnswers.includes(normalizedInput)) {
-                // Resposta Correta
                 errorMsg.style.opacity = '0';
                 successAudio.volume = 0.5;
                 successAudio.play();
                 
-                const mainContent = document.getElementById('main-content');
-                mainContent.style.display = 'none';
+                document.getElementById('main-content').style.display = 'none';
                 
                 const successScreen = document.getElementById('success-screen');
                 successScreen.classList.remove('hidden');
@@ -286,9 +311,7 @@
                     successScreen.classList.add('visible');
                     document.getElementById('final-message').classList.add('visible');
                 }, 100);
-                
             } else {
-                // Resposta Errada
                 errorMsg.style.opacity = '1';
                 setTimeout(() => {
                     errorMsg.style.opacity = '0';
